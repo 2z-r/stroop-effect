@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ストループ効果ゲーム</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;900&display=swap">
+<style>
+:root{--bg:#f3f4f6;--panel:#fff;--ink:#1c2330;--sub:#5d6677;--line:#d9dde5;--accent:#1c2330;--accent-ink:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151c;--panel:#1b2030;--ink:#eef0f5;--sub:#9aa3b5;--line:#2d3448;--accent:#eef0f5;--accent-ink:#12151c}}
+:root[data-theme="dark"]{--bg:#12151c;--panel:#1b2030;--ink:#eef0f5;--sub:#9aa3b5;--line:#2d3448;--accent:#eef0f5;--accent-ink:#12151c}
+*{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;font-weight:500;line-height:1.7;min-height:100vh;display:flex;justify-content:center;padding:24px 16px}
+main{width:100%;max-width:560px}
+h1{font-size:1.5rem;font-weight:900;margin:0 0 .5rem}
+p{margin:.4rem 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px 22px}
+.sub{color:var(--sub);font-size:.92rem}
+button{font:inherit;cursor:pointer;color:var(--ink)}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.go{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:12px 28px;font-weight:900;font-size:1.05rem;margin-top:14px}
+.hidden{display:none!important}
+.bar{display:flex;justify-content:space-between;font-size:.9rem;color:var(--sub);margin-bottom:6px}
+.track{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.fill{height:100%;width:0;background:var(--ink);transition:width .15s}
+#word{font-size:clamp(4rem,22vw,7rem);font-weight:900;text-align:center;height:1.4em;line-height:1.4;margin:22px 0 14px;letter-spacing:.05em}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choices button{background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:14px 8px;font-weight:900;font-size:1.05rem;display:flex;align-items:center;justify-content:center;gap:10px}
+.choices button:active{transform:scale(.97)}
+.dot{width:18px;height:18px;border-radius:50%;display:inline-block}
+.key{font-size:.75rem;color:var(--sub);font-weight:500}
+#fb{text-align:center;height:1.6em;font-weight:900}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+.res div{border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+.res b{display:block;font-size:1.9rem;font-weight:900;line-height:1.2}
+.diff{border-left:4px solid var(--ink);padding:4px 0 4px 14px;margin:14px 0}
+</style>
+</head>
+<body>
+<main>
+ <section id="intro" class="card">
+  <h1>ストループ効果を体験しよう</h1>
+  <p>画面に色の名前が出ます。<b>文字の意味ではなく、文字の“色”</b>に合うボタンをできるだけ速く押してください。</p>
+  <p class="sub">全2ラウンド、各10問。キーボードの1〜4キーでも答えられます。</p>
+  <button class="go" id="start">準備する</button>
+ </section>
+
+ <section id="game" class="card hidden">
+  <div class="bar"><span id="round"></span><span id="count"></span></div>
+  <div class="track"><div class="fill" id="fill"></div></div>
+  <div id="word" aria-live="polite"></div>
+  <div id="fb"></div>
+  <button class="go" id="ready" style="display:block;margin:0 auto 16px">スタート</button>
+  <div class="choices" id="choices"></div>
+ </section>
+
+ <section id="between" class="card hidden">
+  <h1>ラウンド2へ</h1>
+  <p><b>文字の色</b>に合うボタンを押してください。</p>
+  <button class="go" id="next">ラウンド2へ進む</button>
+ </section>
+
+ <section id="result" class="card hidden">
+  <h1>結果</h1>
+  <div class="res">
+   <div><span class="sub">ラウンド1</span><b id="r1"></b><span class="sub" id="a1"></span></div>
+   <div><span class="sub">ラウンド2</span><b id="r2"></b><span class="sub" id="a2"></span></div>
+  </div>
+  <div class="diff" id="diff"></div>
+  <button class="go" id="again">もう一度</button>
+ </section>
+</main>
+<script>
+(function(){
+ var C=[{n:"あか",c:"#e5484d"},{n:"あお",c:"#3b82f6"},{n:"きいろ",c:"#f2b705"},{n:"みどり",c:"#2fa84f"}];
+ var N=10, $=function(i){return document.getElementById(i)};
+ var round=0, idx=0, trials=[], t0=0, locked=true, data=[[],[]], last=-1;
+ var secs=["intro","game","between","result"];
+ function show(id){secs.forEach(function(s){$(s).classList.toggle("hidden",s!==id)})}
+ var box=$("choices");
+ C.forEach(function(x,i){
+  var b=document.createElement("button");
+  b.innerHTML='<span class="dot" style="background:'+x.c+'"></span>'+x.n+' <span class="key">'+(i+1)+'</span>';
+  b.onclick=function(){answer(i)};
+  box.appendChild(b);
+ });
+ function makeTrials(r){
+  var t=[];
+  for(var i=0;i<N;i++){
+   var w=Math.floor(Math.random()*4),c=w;
+   if(r===1){do{c=Math.floor(Math.random()*4)}while(c===w)}
+   t.push({w:w,c:c});
+  }
+  return t;
+ }
+ function begin(r){
+  round=r;idx=0;trials=makeTrials(r);
+  $("round").textContent="ラウンド"+(r+1);
+  show("game");locked=true;$("word").textContent="";$("fb").textContent="";$("count").textContent="0 / "+N;$("fill").style.width="0%";$("ready").classList.remove("hidden");
+ }
+ function nextTrial(){
+  if(idx>=N){ if(round===0){show("between")}else{finish()} return; }
+  $("count").textContent=(idx+1)+" / "+N;
+  $("fill").style.width=(idx/N*100)+"%";
+  $("word").textContent="";$("fb").textContent="";
+  locked=true;
+  setTimeout(function(){
+   var t=trials[idx];
+   var w=$("word");w.textContent=C[t.w].n;w.style.color=C[t.c].c;
+   t0=performance.now();locked=false;
+  },500);
+ }
+ function answer(i){
+  if(locked||$("game").classList.contains("hidden"))return;
+  locked=true;
+  var rt=performance.now()-t0,ok=i===trials[idx].c;
+  data[round].push({rt:rt,ok:ok});
+  var f=$("fb");f.textContent=ok?"正解":"不正解";f.style.color=ok?"#2fa84f":"#e5484d";
+  idx++;
+  setTimeout(nextTrial,250);
+ }
+ function avg(a){var s=0;a.forEach(function(x){s+=x.rt});return a.length?s/a.length:0}
+ function acc(a){var k=0;a.forEach(function(x){if(x.ok)k++});return k}
+ function finish(){
+  $("fill").style.width="100%";
+  var m1=avg(data[0]),m2=avg(data[1]);
+  $("r1").textContent=(m1/1000).toFixed(2)+"秒";
+  $("r2").textContent=(m2/1000).toFixed(2)+"秒";
+  $("a1").textContent="正解 "+acc(data[0])+"/"+N;
+  $("a2").textContent="正解 "+acc(data[1])+"/"+N;
+  var d=m2-m1;
+  $("diff").innerHTML="ラウンド2はラウンド1より平均 <b>"+(Math.abs(d)/1000).toFixed(2)+"秒</b> "+(d>0?"長く":"短く")+"かかりました。";
+  show("result");
+ }
+ $("start").onclick=function(){data=[[],[]];begin(0)};
+ $("next").onclick=function(){begin(1)};
+ $("ready").onclick=function(){$("ready").classList.add("hidden");nextTrial()};
+ $("again").onclick=function(){data=[[],[]];begin(0)};
+ document.addEventListener("keydown",function(e){
+  var k=parseInt(e.key,10);
+  if(k>=1&&k<=4)answer(k-1);
+ });
+})();
+</script>
+</body>
+</html>
