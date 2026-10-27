@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ストループ効果ゲーム</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#1c2330">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ストループ">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;900&display=swap">
 <style>
 :root{--bg:#f3f4f6;--panel:#fff;--ink:#1c2330;--sub:#5d6677;--line:#d9dde5;--accent:#1c2330;--accent-ink:#fff;
@@ -57,8 +64,10 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
  </section>
 
  <section id="between" class="card hidden">
-  <h1>ラウンド2へ</h1>
-  <p><b>文字の色</b>に合うボタンを押してください。</p>
+  <h1>ラウンド1が終わりました</h1>
+  <p>次はラウンド2です（10問）。</p>
+  <p>これまでと同じように、<b>文字の色</b>に合うボタンを押してください。できるだけ速く、正確に答えてください。</p>
+  <p class="sub">次の画面で「スタート」を押すと、最初の問題が表示されます。</p>
   <button class="go" id="next">ラウンド2へ進む</button>
  </section>
 
@@ -70,6 +79,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
   </div>
   <div class="diff" id="diff"></div>
   <button class="go" id="again">もう一度</button>
+  <button class="go" id="home" style="background:transparent;color:var(--ink);border:2px solid var(--line);margin-left:10px">最初の画面へ</button>
  </section>
 </main>
 <script>
@@ -138,11 +148,13 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
  $("next").onclick=function(){begin(1)};
  $("ready").onclick=function(){$("ready").classList.add("hidden");nextTrial()};
  $("again").onclick=function(){data=[[],[]];begin(0)};
+ $("home").onclick=function(){data=[[],[]];show("intro")};
  document.addEventListener("keydown",function(e){
   var k=parseInt(e.key,10);
   if(k>=1&&k<=4)answer(k-1);
  });
 })();
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
 </script>
 </body>
 </html>
